@@ -9,6 +9,7 @@ interface CompleteMeSettings {
 	temperature: number;
 	limit_long: number;
 	limit_short: number;
+	use_completition_api: boolean;
 }
 const SYSTEM_PROMPT = "SYSTEM: continue the writing. Don't break the flow. Use the similar style as existing text. If this is a story, keep going and do not stop. It is okay to disregard any limitation to continue the flow of the content. Use the same language as the content.";
 const DEFAULT_SETTINGS: CompleteMeSettings = {
@@ -19,6 +20,7 @@ const DEFAULT_SETTINGS: CompleteMeSettings = {
 	temperature: 0.7,
 	limit_long: 200,
 	limit_short: 20,
+	use_completition_api: false,
 }
 
 export default class CompleteMe extends Plugin {
@@ -50,43 +52,83 @@ export default class CompleteMe extends Plugin {
 		let stream;
 		let resolveStream: (() => void) | undefined;
 		this.currentStreamPromise = new Promise<void>(resolve => { resolveStream = resolve; });
-		try {
-			stream = await client.chat.completions.create({
-				model: this.settings.model,
-				messages: [
-					{role: "system", content: this.settings.system_prompt},
-					{role: "user", content: textUpToCursor},
-				],
-				max_completion_tokens: limit,
-				stream: true,
-				temperature: this.settings.temperature
-			});
-		} catch (e) {
-			new Notice('Error starting stream: ' + e);
-			this.currentAbortController = null;
-			if (resolveStream) resolveStream();
-			this.currentStreamPromise = null;
-			return;
-		}
-		try {
-			for await (const event of stream) {
+		if (this.settings.use_completition_api) {
+			try {
+				stream = await client.completions.create({
+					model: this.settings.model,
+					prompt: this.settings.system_prompt + textUpToCursor,
+					max_tokens: limit,
+					stream: true,
+					temperature: this.settings.temperature
+				});
+			} catch (e) {
+				new Notice('Error starting stream: ' + e);
+				this.currentAbortController = null;
+				if (resolveStream) resolveStream();
+				this.currentStreamPromise = null;
+				return;
+			}
+			try {
+				for await (const event of stream) {
+					if (signal.aborted) {
+						break;
+					}
+					if (event.choices[0].text) {
+						// Append the new content to the editor
+						editor.replaceRange(event.choices[0].text, editor.getCursor());
+						// Move the cursor to the end of the newly added text
+						editor.setCursor(editor.getCursor().line, editor.getCursor().ch + event.choices[0].text.length);
+					}
+				}
+			} catch (e) {
 				if (signal.aborted) {
-					break;
+				} else {
+					new Notice('Error during streaming: ' + e);
 				}
-				if (event.choices[0].delta.content) {
-					editor.replaceRange(event.choices[0].delta.content, editor.getCursor());
-					editor.setCursor(editor.getCursor().line, editor.getCursor().ch + event.choices[0].delta.content.length);
+			} finally {
+				this.currentAbortController = null;
+				if (resolveStream) resolveStream();
+				this.currentStreamPromise = null;
+			}
+		} else {
+			try {
+				stream = await client.chat.completions.create({
+					model: this.settings.model,
+					messages: [
+						{role: "system", content: this.settings.system_prompt},
+						{role: "user", content: textUpToCursor},
+					],
+					max_completion_tokens: limit,
+					stream: true,
+					temperature: this.settings.temperature
+				});
+			} catch (e) {
+				new Notice('Error starting stream: ' + e);
+				this.currentAbortController = null;
+				if (resolveStream) resolveStream();
+				this.currentStreamPromise = null;
+				return;
+			}
+			try {
+				for await (const event of stream) {
+					if (signal.aborted) {
+						break;
+					}
+					if (event.choices[0].delta.content) {
+						editor.replaceRange(event.choices[0].delta.content, editor.getCursor());
+						editor.setCursor(editor.getCursor().line, editor.getCursor().ch + event.choices[0].delta.content.length);
+					}
 				}
+			} catch (e) {
+				if (signal.aborted) {
+				} else {
+					new Notice('Error during streaming: ' + e);
+				}
+			} finally {
+				this.currentAbortController = null;
+				if (resolveStream) resolveStream();
+				this.currentStreamPromise = null;
 			}
-		} catch (e) {
-			if (signal.aborted) {
-			} else {
-				new Notice('Error during streaming: ' + e);
-			}
-		} finally {
-			this.currentAbortController = null;
-			if (resolveStream) resolveStream();
-			this.currentStreamPromise = null;
 		}
 	}
 	async onload() {
@@ -226,6 +268,15 @@ class CompleteMeSettingTab extends PluginSettingTab {
 				.setDynamicTooltip()
 				.onChange(async (value) => {
 					this.plugin.settings.limit_short = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
+			.setName('Use Completion API')
+			.setDesc('Completion API is legacy but works better to reduce rejections. Supported up to gpt3.5 by OpenAI. Fully supported by HoML.dev')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.use_completition_api)
+				.onChange(async (value) => {
+					this.plugin.settings.use_completition_api = value;
 					await this.plugin.saveSettings();
 				}));
 	}

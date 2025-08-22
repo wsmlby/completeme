@@ -24,6 +24,9 @@ AI-powered text completion for Obsidian, with streaming and stop functionality.
 6. **Recommended:**
 	- On desktop, set a keyboard shortcut for the completion commands for faster access (Settings → Hotkeys).
 	- On mobile, add the completion commands to your toolbar for quick access (Settings → Toolbar).
+7. **Self-hosted API Support**: You can use a self-hosted OpenAI-compatible API server such as [HoML](https://homl.dev/) or Ollama. Simply set the **Base URL** in the plugin settings to your server's endpoint and provide the appropriate API key if required.
+	- For [HoML](https://homl.dev/), use your local server's URL (e.g., `http://localhost:7456/v1` by default).
+	- For Ollama, use your local server's URL (e.g., `http://localhost:11434/v1`).
 
 
 ## Commands
@@ -31,6 +34,7 @@ AI-powered text completion for Obsidian, with streaming and stop functionality.
 - **Complete me (short)**: Streams a short AI-generated text completion into your editor.
 - **Complete me (Long)**: Streams a longer AI-generated text completion into your editor.
 - **Stop Streaming**: Aborts the current streaming completion.
+
 
 
 ## Settings
@@ -42,6 +46,7 @@ AI-powered text completion for Obsidian, with streaming and stop functionality.
 - **Temperature**: Controls randomness/creativity of completions.
 - **Complete Limit (Long)**: Maximum tokens for long completions.
 - **Complete Limit (Short)**: Maximum tokens for short completions.
+- **use_completition_api**: If enabled, uses the OpenAI `/completions` API endpoint. If disabled, uses `/chat/completions` (for chat-based models). Choose based on your model and API compatibility. Completion API is legacy but works better to reduce rejections. Supported up to gpt-3.5-turbo-instruct by OpenAI. However this API provides better text completition, and it is fully supported by HoML.
 
 ## Development
 
