@@ -28,6 +28,7 @@ export default class CompleteMe extends Plugin {
 		this.addCommand({
 			id: 'complete-me',
 			name: 'Complete me',
+			icon: 'dice',
 			editorCallback: async (editor: Editor) => {
 				// text up to the cursor from the begining
 				const textUpToCursor = editor.getRange({line: 0, ch: 0}, editor.getCursor());
@@ -78,6 +79,7 @@ export default class CompleteMe extends Plugin {
 		this.addCommand({
 			id: 'stop-streaming',
 			name: 'Stop Streaming',
+			icon: 'square',
 			callback: () => {
 				if (this.currentAbortController) {
 					this.currentAbortController.abort();
