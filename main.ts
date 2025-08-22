@@ -51,10 +51,13 @@ export default class CompleteMe extends Plugin {
 		let resolveStream: (() => void) | undefined;
 		this.currentStreamPromise = new Promise<void>(resolve => { resolveStream = resolve; });
 		try {
-			stream = await client.completions.create({
+			stream = await client.chat.completions.create({
 				model: this.settings.model,
-				prompt: this.settings.system_prompt + textUpToCursor,
-				max_tokens: limit,
+				messages: [
+					{role: "system", content: this.settings.system_prompt},
+					{role: "user", content: textUpToCursor},
+				],
+				max_completion_tokens: limit,
 				stream: true,
 				temperature: this.settings.temperature
 			});
@@ -70,11 +73,9 @@ export default class CompleteMe extends Plugin {
 				if (signal.aborted) {
 					break;
 				}
-				if (event.choices[0].text) {
-					// Append the new content to the editor
-					editor.replaceRange(event.choices[0].text, editor.getCursor());
-					// Move the cursor to the end of the newly added text
-					editor.setCursor(editor.getCursor().line, editor.getCursor().ch + event.choices[0].text.length);
+				if (event.choices[0].delta.content) {
+					editor.replaceRange(event.choices[0].delta.content, editor.getCursor());
+					editor.setCursor(editor.getCursor().line, editor.getCursor().ch + event.choices[0].delta.content.length);
 				}
 			}
 		} catch (e) {
