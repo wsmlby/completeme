@@ -46,7 +46,7 @@ export default class CompleteMe extends Plugin {
 			baseURL: this.settings.baseUrl,
 			dangerouslyAllowBrowser: true
 		});
-
+		const title = this.app.workspace.getActiveFile()?.basename || "Untitled";
 		this.currentAbortController = new AbortController();
 		const signal = this.currentAbortController.signal;
 		let stream;
@@ -56,7 +56,7 @@ export default class CompleteMe extends Plugin {
 			try {
 				stream = await client.completions.create({
 					model: this.settings.model,
-					prompt: this.settings.system_prompt + textUpToCursor,
+					prompt: this.settings.system_prompt + "Title: "+ title + "\n Content: \n" + textUpToCursor,
 					max_tokens: limit,
 					stream: true,
 					temperature: this.settings.temperature
@@ -95,8 +95,8 @@ export default class CompleteMe extends Plugin {
 				stream = await client.chat.completions.create({
 					model: this.settings.model,
 					messages: [
-						{role: "system", content: this.settings.system_prompt},
-						{role: "user", content: textUpToCursor},
+						{role: "system", content: "You are an AI assistant tasked with text completion. You are not a conversational AI. Instead you simply predict what text comes next as if you are completing the user’s message. " + this.settings.system_prompt},
+						{role: "user", content: "Title: " + title + "\n Content: \n" + textUpToCursor},
 					],
 					max_completion_tokens: limit,
 					stream: true,
